@@ -687,4 +687,89 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setStatus("idle");
 });
+// End of app.jsake Word)
+// ===============================
+function toggleVoiceMode() {
+  if (!Voice.enabled) {
+    appendAIMessage("Voice input isn’t supported in this browser. Try Chrome or Edge.");
+    return;
+  }
+
+  App.voiceOn = !App.voiceOn;
+
+  if (App.voiceOn) {
+    Voice.mode = "wake";
+    safeStartRecognition();
+    appendAIMessage("Voice mode enabled. Say “Hey Atlas”.");
+    // Optional: spoken confirmation
+    speakAtlas("Voice mode enabled. Say Hey Atlas.");
+  } else {
+    safeStopRecognition();
+    Voice.mode = "off";
+    appendAIMessage("Voice mode disabled.");
+  }
+}
+
+// ===============================
+// Close menu when clicking outside
+// ===============================
+document.addEventListener("click", (e) => {
+  const menu = $("menuPanel");
+  const menuBtn = document.querySelector("nav button");
+
+  if (menu && !menu.contains(e.target) && !menuBtn?.contains(e.target)) {
+    menu.classList.add("-translate-x-full");
+  }
+});
+$("menuPanel")?.addEventListener("click", (e) => e.stopPropagation());
+
+// ===============================
+// Keyboard shortcuts
+// ===============================
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const menu = $("menuPanel");
+    if (menu && !menu.classList.contains("-translate-x-full")) toggleMenu();
+  }
+
+  // Ctrl/Cmd + K focuses input
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    $("messageInput")?.focus();
+  }
+
+  // Ctrl/Cmd + M toggles voice mode
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+    e.preventDefault();
+    toggleVoiceMode();
+  }
+});
+
+// ===============================
+// Init
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  injectMicButton();
+  seedWelcome();
+  setupSpeechRecognition();
+
+  const input = $("messageInput");
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  // greet by name (spoken) on load
+  const name = userName || "there";
+  // slight delay so orb.js is ready
+  setTimeout(() => {
+    speakAtlas(`Welcome back, ${name}. How can I help?`);
+  }, 450);
+
+  setStatus("idle");
+});
 // End of app.js

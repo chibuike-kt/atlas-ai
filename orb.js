@@ -5,9 +5,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 (() => {
-  // =========================================================
-  //  CONFIG
-  // =========================================================
+  // Config
   const TTS_URL = window.ATLAS_TTS_URL || "../config/tts.php";
 
   const USER_NAME_RAW = (window.ATLAS_USER_NAME || window.userData?.name || "")
@@ -22,29 +20,21 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     lineCount: 1400,
     pointsPerLine: 90,
 
-    // Bloom clamp (prevents “too white”)
+
     bloomStrengthBase: 0.25,
     bloomStrengthSpeak: 0.35,
     bloomStrengthSurge: 0.45,
     bloomRadiusBase: 0.34,
 
-    // Core/shell
     coreOpacity: 0.58,
     shellOpacityBase: 0.03,
 
-    // Mic reactive (very subtle, not the aggressive scatter)
     micReactMax: 0.22,
     micPitchBias: 0.38
   };
 
-  // =========================================================
-  //  MOUNT TARGET
-  // =========================================================
   const mount = document.getElementById("atlas-orb") || document.body;
 
-  // =========================================================
-  //  THREE / ORB SETUP
-  // =========================================================
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(
@@ -65,7 +55,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(VIS.bg, 1);
 
-  // Remove ONLY our previous canvas if we re-init
+  // clean up old canvas if reinit
   mount.querySelectorAll("canvas[data-atlas-orb='1']").forEach((c) => c.remove());
 
   renderer.domElement.dataset.atlasOrb = "1";
@@ -87,12 +77,8 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
   );
   composer.addPass(bloom);
 
-  // warm ambient (gold vibe)
   scene.add(new THREE.AmbientLight(0xffcc88, 0.16));
 
-  // =========================================================
-  //  SHADERS
-  // =========================================================
   const vertexShader = `
     uniform float uTime;
     uniform float uSurge;
@@ -173,10 +159,8 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
       flow = normalize(mix(flow, focusDir, speakAmount * 0.85));
       amp *= (1.0 + 0.85 * speakAmount);
 
-      // Pull forward slightly while speaking (Jarvis "attention")
       p += focusDir * (0.20 * speakAmount);
 
-      // Subtle tightening to the axis (prevents chaotic scatter)
       vec3 perp = dir - focusDir * dot(dir, focusDir);
       p -= perp * (0.12 * speakAmount);
 
@@ -208,7 +192,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     void main() {
       float front = smoothstep(-0.35, 0.85, vDepth);
 
-      // Gold palette (stronger gold, less white)
       vec3 gold = vec3(0.98, 0.73, 0.32);
       vec3 pale = vec3(1.00, 0.86, 0.56);
 
@@ -306,9 +289,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     group.add(line);
   }
 
-  // =========================================================
-  //  SPEAKING / PITCH STATE (exposed to app.js)
-  // =========================================================
+  // Speaking & pitch state
   let speakTarget = 0;
   let speakValue = 0;
 
@@ -335,12 +316,10 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     if (isSpeaking) triggerReseed();
   };
 
-  // =========================================================
-  //  AUDIO CONTEXT
-  // =========================================================
+  // Audio setup
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  // TTS analyser (pitch animation during Atlas speech)
+  // TTS analyser for pitch tracking
   const ttsAnalyser = audioCtx.createAnalyser();
   ttsAnalyser.fftSize = 2048;
 
@@ -413,9 +392,7 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     pitchValue = THREE.MathUtils.lerp(pitchValue, p01, 0.15);
   }
 
-  // =========================================================
-  //  MIC CAPTURE + SUBTLE REACTIVITY
-  // =========================================================
+  // Mic input for feedback
   let micStream = null;
   let micSource = null;
 
@@ -458,7 +435,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     micRms = computeRMSFromByte(micByte);
   }
 
-  // Expose for app.js if you want to call it directly
   window.enableAtlasAudio = async () => {
     if (audioCtx.state === "suspended") {
       try { await audioCtx.resume(); } catch {}
@@ -467,9 +443,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     return true;
   };
 
-  // =========================================================
-  //  OPENAI TTS
-  // =========================================================
   async function atlasSpeak(text, opts = {}) {
     if (!text) return;
 
@@ -534,9 +507,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     window.setAtlasSpeaking(false);
   };
 
-  // =========================================================
-  //  GREETING (once on first user gesture) — NO "T" key
-  // =========================================================
   let greeted = false;
 
   function buildGreeting() {
@@ -552,14 +522,12 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
       try { await audioCtx.resume(); } catch {}
     }
 
-    // prime mic for later (optional but helps)
     await enableMic();
 
     // speak greeting
     atlasSpeak(buildGreeting(), { voice: "sage" });
   }
 
-  // This is the only gesture-based unlock we keep
   window.addEventListener(
     "click",
     () => {
@@ -568,9 +536,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     { once: true }
   );
 
-  // =========================================================
-  //  ANIMATION LOOP
-  // =========================================================
   const clock = new THREE.Clock();
 
   function animate() {
@@ -585,14 +550,12 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
     const raw = Math.max(0, Math.sin(t * 0.33));
     const surge = Math.pow(raw, 8.0);
 
-    // Speak ramp
     const speakUp = 14.0;
     const speakDown = 5.0;
 
     if (speakTarget > speakValue) speakValue = Math.min(1, speakValue + speakUp * dt);
     else speakValue = Math.max(0, speakValue - speakDown * dt);
 
-    // Pitch update from TTS
     updatePitchFromTTS();
 
     // Mic-driven subtle energy when NOT speaking (Jarvis "alive" feel)
@@ -604,7 +567,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
       // small breathing motion
       sharedUniforms.uSettle.value = Math.max(sharedUniforms.uSettle.value, micBoost * 0.6);
 
-      // bias pitch slightly from mic energy (visual only)
       const targetPitch = VIS.micPitchBias + micEnergy * 0.35;
       pitchValue = THREE.MathUtils.lerp(pitchValue, targetPitch, 0.05);
 
@@ -677,9 +639,6 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 
   animate();
 
-  // =========================================================
-  //  Resize
-  // =========================================================
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
